@@ -244,13 +244,189 @@
         /* 简单的标签提示 */
         .tooltip { position: absolute; left: 22px; top: -2px; background: rgba(0,0,0,.6); border: 1px solid var(--line); color: #cbe1ff; padding: 2px 6px; border-radius: 6px; font-size: 12px; white-space: nowrap; display: none; }
         .marker:hover + .tooltip { display: block; }
+
+        /* 机井闪烁图标样式 */
+        .well-flash-icon {
+            position: fixed;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flash-well {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--danger), rgba(255,91,91,.6));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: wellFlash 2s infinite ease-in-out;
+            box-shadow: 0 0 20px rgba(255,91,91,.8);
+        }
+
+        .flash-text {
+            color: var(--danger);
+            font-weight: 600;
+            font-size: 14px;
+            text-shadow: 0 0 10px rgba(255,91,91,.8);
+        }
+
+        @keyframes wellFlash {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(255,91,91,.8);
+            }
+            50% { 
+                transform: scale(1.2);
+                box-shadow: 0 0 30px rgba(255,91,91,1);
+            }
+        }
+
+        /* 右下角通知弹窗样式 */
+        .notification-popup {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 320px;
+            background: var(--bg-90);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,.45);
+            z-index: 20;
+            animation: slideInRight 0.5s ease-out;
+            backdrop-filter: blur(6px);
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255,91,91,.15), rgba(255,91,91,.06));
+        }
+
+        .notification-icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .notification-title {
+            color: var(--danger);
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .notification-close:hover {
+            background: rgba(255,255,255,.1);
+        }
+
+        .notification-content {
+            padding: 12px 16px;
+        }
+
+        .notification-item {
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-item strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .notification-item span {
+            color: var(--danger);
+        }
+
+        .notification-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .notification-btn {
+            background: linear-gradient(180deg, rgba(34,193,220,.25), rgba(34,193,220,.05));
+            color: var(--text);
+            border: 1px solid var(--primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .notification-btn:hover {
+            background: linear-gradient(180deg, rgba(34,193,220,.35), rgba(34,193,220,.15));
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="map" id="map">
         <div class="top-bar">
             <button class="btn" id="simulateBtn">模拟一条报修</button>
+            <button class="btn" id="simulateBtn2">模拟报警通知</button>
             <button class="btn" id="clearBtn">清除闪烁/关闭弹窗</button>
+        </div>
+
+        <!-- 机井闪烁图标 -->
+        <div class="well-flash-icon" id="wellFlashIcon" style="display: none;">
+            <div class="flash-well">💧</div>
+            <div class="flash-text">机井报警</div>
+        </div>
+
+        <!-- 右下角通知消息 -->
+        <div class="notification-popup" id="notificationPopup" style="display: none;">
+            <div class="notification-header">
+                <span class="notification-icon">🚨</span>
+                <span class="notification-title">新报警信息</span>
+                <button class="notification-close" id="notificationClose">×</button>
+            </div>
+            <div class="notification-content">
+                <div class="notification-item">
+                    <strong>机井位置：</strong><span id="notifLocation">—</span>
+                </div>
+                <div class="notification-item">
+                    <strong>故障内容：</strong><span id="notifFault">—</span>
+                </div>
+            </div>
+            <div class="notification-footer">
+                <button class="notification-btn" id="viewDetailsBtn">查看详情</button>
+            </div>
         </div>
 
         <!-- 演示：放置少量机井标记（绝对定位），绿色为正常 -->
@@ -291,11 +467,12 @@
         </div>
     </section>
 
-    <div class="hint">提示：点击“模拟一条报修”或直接点地图上的井标进行演示</div>
+    <div class="hint">提示：点击"模拟一条报修"显示弹窗，点击"模拟报警通知"显示通知，或直接点地图上的井标进行演示</div>
 
     <script>
         const mapEl = document.getElementById('map');
         const simulateBtn = document.getElementById('simulateBtn');
+        const simulateBtn2 = document.getElementById('simulateBtn2');
         const clearBtn = document.getElementById('clearBtn');
         const chatModal = document.getElementById('chatModal');
         const closeBtn = document.getElementById('closeBtn');
@@ -304,6 +481,14 @@
         const dialogIdEl = document.getElementById('dialogId');
         const wellInfo = document.getElementById('wellInfo');
         const dialog = document.getElementById('dialog');
+        
+        // 第二种交互方式的元素
+        const wellFlashIcon = document.getElementById('wellFlashIcon');
+        const notificationPopup = document.getElementById('notificationPopup');
+        const notificationClose = document.getElementById('notificationClose');
+        const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+        const notifLocation = document.getElementById('notifLocation');
+        const notifFault = document.getElementById('notifFault');
         
         
         // 只读模式：不再使用输入框
@@ -407,6 +592,38 @@
             markerEl.classList.add('yellow', 'blink');
         }
 
+        /**
+         * 第二种交互方式：显示机井闪烁图标和通知消息
+         */
+        function showNotificationAlert(wellId) {
+            const info = demoWells[wellId] || demoWells['ZQ0858'];
+            
+            // 显示机井闪烁图标
+            wellFlashIcon.style.display = 'flex';
+            
+            // 设置通知消息内容
+            notifLocation.textContent = info.position;
+            notifFault.textContent = info.issue;
+            
+            // 显示通知弹窗
+            notificationPopup.style.display = 'block';
+            
+            // 播放提示音
+            playAlertSound();
+            
+            // 3秒后自动隐藏机井闪烁图标
+            setTimeout(() => {
+                wellFlashIcon.style.display = 'none';
+            }, 3000);
+        }
+
+        /**
+         * 隐藏通知弹窗
+         */
+        function hideNotification() {
+            notificationPopup.style.display = 'none';
+        }
+
         /** 发送消息（右侧气泡） */
         function sendMessage(text) {
             if (!text.trim()) return;
@@ -465,11 +682,16 @@
             }
         }
 
-        // 点击"模拟一条报修"：默认让 ZQ0858 进入报修并打开弹窗
+        // 点击"模拟一条报修"：默认让 ZQ0858 进入报修并打开弹窗（第一种方式）
         simulateBtn.addEventListener('click', () => {
             const marker = document.querySelector('.marker[data-id="ZQ0858"]');
             if (marker) setMarkerReported(marker);
             openChatForWell('ZQ0858');
+        });
+
+        // 点击"模拟报警通知"：显示机井闪烁图标和通知消息（第二种方式）
+        simulateBtn2.addEventListener('click', () => {
+            showNotificationAlert('ZQ0858');
         });
 
         // 清除状态
@@ -478,6 +700,17 @@
             document.querySelectorAll('.marker').forEach(m => m.classList.add('green'));
             chatModal.classList.remove('visible', 'alert');
             chatModal.setAttribute('aria-hidden', 'true');
+            // 清除第二种交互方式的状态
+            hideNotification();
+            wellFlashIcon.style.display = 'none';
+        });
+
+        // 通知弹窗事件监听器
+        notificationClose.addEventListener('click', hideNotification);
+        
+        viewDetailsBtn.addEventListener('click', () => {
+            hideNotification();
+            openChatForWell('ZQ0858');
         });
 
         // 允许点击任意 marker 触发报修演示
