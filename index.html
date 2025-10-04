@@ -206,6 +206,7 @@
         .well-meta { font-size: 13px; line-height: 1.6; color: var(--muted); }
         .well-meta b { color: var(--text); font-weight: 600; }
         .well-meta .fault-content { color: var(--danger); font-weight: 600; }
+        .well-meta .phone-number { color: var(--danger); font-weight: 600; }
 
         .dialog {
             border: 1px solid var(--line);
@@ -340,7 +341,7 @@
                 <div><b>机井位置：</b>${info.position}</div>
                 <div><b>机井编号：</b>${info.id}</div>
                 <div><b>报修时间：</b>${info.reportTime}</div>
-                <div><b>报修人电话：</b>${info.reporterPhone}</div>
+                <div><b>报修人电话：</b><span class="phone-number">${info.reporterPhone}</span></div>
                 <div><b>报修故障内容：</b><span class="fault-content">${info.issue}</span></div>
                 <div><b>巡检员：</b>${info.inspector}</div>
             `;
