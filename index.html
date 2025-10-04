@@ -409,6 +409,9 @@
             </div>
             <div class="notification-content">
                 <div class="notification-item">
+                    <strong>机井编号：</strong><span id="notifWellId">—</span>
+                </div>
+                <div class="notification-item">
                     <strong>机井位置：</strong><span id="notifLocation">—</span>
                 </div>
                 <div class="notification-item">
@@ -478,6 +481,7 @@
         const notificationPopup = document.getElementById('notificationPopup');
         const notificationClose = document.getElementById('notificationClose');
         const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+        const notifWellId = document.getElementById('notifWellId');
         const notifLocation = document.getElementById('notifLocation');
         const notifFault = document.getElementById('notifFault');
         
@@ -593,6 +597,7 @@
             wellFlashIcon.style.display = 'flex';
             
             // 设置通知消息内容
+            notifWellId.textContent = info.id;
             notifLocation.textContent = info.position;
             notifFault.textContent = info.issue;
             
@@ -602,17 +607,15 @@
             // 播放提示音
             playAlertSound();
             
-            // 3秒后自动隐藏机井闪烁图标
-            setTimeout(() => {
-                wellFlashIcon.style.display = 'none';
-            }, 3000);
+            // 不再自动隐藏机井闪烁图标，只有手动关闭通知时才隐藏
         }
 
         /**
-         * 隐藏通知弹窗
+         * 隐藏通知弹窗和机井闪烁图标
          */
         function hideNotification() {
             notificationPopup.style.display = 'none';
+            wellFlashIcon.style.display = 'none';
         }
 
         /** 发送消息（右侧气泡） */
@@ -692,15 +695,14 @@
             chatModal.classList.remove('visible', 'alert');
             chatModal.setAttribute('aria-hidden', 'true');
             // 清除第二种交互方式的状态
-            hideNotification();
-            wellFlashIcon.style.display = 'none';
+            hideNotification(); // hideNotification函数已经包含了隐藏机井闪烁图标的逻辑
         });
 
         // 通知弹窗事件监听器
         notificationClose.addEventListener('click', hideNotification);
         
         viewDetailsBtn.addEventListener('click', () => {
-            hideNotification();
+            hideNotification(); // 这会同时隐藏通知和机井闪烁图标
             openChatForWell('ZQ0858');
         });
 
