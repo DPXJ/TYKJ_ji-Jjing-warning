@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>机井电话报修 - 首页监管弹窗（原型）</title>
+    <style>
+        :root {
+            --green: #10d48a;
+            --yellow:#ffcc00;
+            --danger:#ff5b5b;
+            --bg-90: rgba(9, 14, 23, .9);
+            --bg-80: rgba(9, 14, 23, .8);
+            --line: rgba(255,255,255,.08);
+            --text: #e8f1ff;
+            --muted: #9fb3c8;
+            --primary:#22c1dc;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+            background: #000;
+            overflow: hidden;
+        }
+
+        /* 地图容器使用你的截图作为背景 */
+        .map {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: url('./image.png') center/cover no-repeat #0b0f1a;
+        }
+
+        /* 顶部状态栏与按钮 */
+        .top-bar {
+            position: fixed;
+            left: 16px;
+            top: 16px;
+            z-index: 5;
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            background: linear-gradient(180deg, rgba(34,193,220,.25), rgba(34,193,220,.05));
+            color: var(--text);
+            border: 1px solid var(--primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn:active { transform: translateY(1px); }
+
+        /* 机井标记（简化为发光圆环） */
+        .marker {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(0,0,0,.6) inset, 0 0 8px 2px rgba(0,0,0,.35);
+            cursor: pointer;
+        }
+        .marker::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.85), rgba(255,255,255,.35) 45%, transparent 46%);
+            mix-blend-mode: screen;
+        }
+        .marker.green { background: radial-gradient(circle, var(--green), rgba(16,212,138,.35)); }
+        .marker.yellow { background: radial-gradient(circle, var(--yellow), rgba(255,204,0,.35)); }
+
+        /* 闪烁动画（报修） */
+        @keyframes blink {
+            0%, 100% { filter: drop-shadow(0 0 0 rgba(255,204,0,.0)) saturate(120%); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 10px rgba(255,204,0,.9)) saturate(180%); transform: scale(1.15); }
+        }
+        .blink {
+            animation: blink 1.1s infinite ease-in-out;
+        }
+
+        /* 置顶聊天弹窗 */
+        .chat-modal {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 864px;
+            max-width: calc(100vw - 24px);
+            background: var(--bg-90);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,.45);
+            z-index: 10;
+            display: none;
+            flex-direction: column;
+            backdrop-filter: blur(6px);
+        }
+
+        /* 报警状态下的红色流动边框效果 */
+        .chat-modal.alert {
+            border: 2px solid var(--danger);
+            animation: alertPulse 4s infinite ease-in-out;
+        }
+
+        /* 鼠标悬停时暂停动画 */
+        .chat-modal.alert:hover {
+            animation-play-state: paused;
+        }
+
+        .chat-modal.alert::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 14px;
+            background: linear-gradient(45deg, 
+                var(--danger) 0%, 
+                #ff8a80 25%, 
+                var(--danger) 50%, 
+                #ff8a80 75%, 
+                var(--danger) 100%);
+            background-size: 200% 200%;
+            animation: borderFlow 6s linear infinite;
+            animation-play-state: var(--before-animation-play-state, running);
+            z-index: -1;
+        }
+
+        .chat-modal.alert::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 12px;
+            background: var(--bg-90);
+            z-index: -1;
+        }
+
+        /* 报警闪烁动画 */
+        @keyframes alertPulse {
+            0%, 100% { 
+                box-shadow: 0 10px 40px rgba(0,0,0,.45), 0 0 20px rgba(255,91,91,.3);
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% { 
+                box-shadow: 0 10px 40px rgba(0,0,0,.45), 0 0 30px rgba(255,91,91,.8);
+                transform: translate(-50%, -50%) scale(1.07);
+            }
+        }
+
+        /* 边框流动动画 */
+        @keyframes borderFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 标题闪烁效果 */
+        .chat-modal.alert .chat-title {
+            animation: titleBlink 3s infinite ease-in-out;
+        }
+
+        @keyframes titleBlink {
+            0%, 100% { color: var(--text); }
+            50% { color: var(--danger); }
+        }
+        .chat-modal.visible { display: flex; }
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(34,193,220,.15), rgba(34,193,220,.06));
+            border-radius: 12px 12px 0 0;
+        }
+        .chat-title { font-weight: 600; letter-spacing: .5px; }
+        .chat-actions { display: flex; gap: 8px; }
+        .icon-btn {
+            width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line);
+            background: rgba(255,255,255,.04); color: var(--text); cursor: pointer;
+        }
+
+        .chat-body {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 12px;
+            padding: 12px;
+        }
+        .well-card {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            background: var(--bg-80);
+        }
+        .well-card h4 { margin: 0 0 8px 0; font-size: 16px; }
+        .well-meta { font-size: 13px; line-height: 1.6; color: var(--muted); }
+        .well-meta b { color: var(--text); font-weight: 600; }
+        .well-meta .fault-content { color: var(--danger); font-weight: 600; }
+
+        .dialog {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            background: var(--bg-80);
+            display: flex; flex-direction: column; gap: 10px;
+            max-height: 72vh; overflow: hidden;
+        }
+        .msg { display: flex; gap: 10px; align-items: flex-end; }
+        .msg .avatar { width: 34px; height: 34px; border-radius: 50%; flex: 0 0 34px; border: 1px solid var(--line); display:flex; align-items:center; justify-content:center; color:#d7e7ff; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
+        .avatar-ai { background: radial-gradient(120px 120px at 30% 30%, #2f7cff, #1b2540); box-shadow: inset 0 0 8px rgba(255,255,255,.08); }
+        .avatar-user { background: radial-gradient(120px 120px at 70% 30%, #21b37b, #132a20); box-shadow: inset 0 0 8px rgba(255,255,255,.08); }
+        .msg .bubble {
+            max-width: 72%; padding: 9px 12px; border-radius: 10px; line-height: 1.6; font-size: 14px;
+            border: 1px solid var(--line);
+        }
+        .msg.left { justify-content: flex-start; }
+        .msg.left .bubble { background: #202a38; }
+        .msg.right { justify-content: flex-end; }
+        .msg.right .bubble { background: #1f3b2a; border-color: rgba(16,212,138,.35); }
+        .msg.left .bubble { border-top-left-radius: 4px; }
+        .msg.right .bubble { border-top-right-radius: 4px; }
+        .time { text-align: center; color: var(--muted); font-size: 12px; margin: 4px 0; }
+
+        /* 已去除输入框，保留样式占位以便后续可能恢复 */
+
+        /* 小提示标签 */
+        .hint {
+            position: fixed; right: 12px; bottom: 12px; z-index: 6;
+            background: rgba(255,255,255,.06); border: 1px solid var(--line);
+            padding: 6px 10px; border-radius: 8px; font-size: 12px; color: var(--muted);
+        }
+
+        /* 简单的标签提示 */
+        .tooltip { position: absolute; left: 22px; top: -2px; background: rgba(0,0,0,.6); border: 1px solid var(--line); color: #cbe1ff; padding: 2px 6px; border-radius: 6px; font-size: 12px; white-space: nowrap; display: none; }
+        .marker:hover + .tooltip { display: block; }
+    </style>
+</head>
+<body>
+    <div class="map" id="map">
+        <div class="top-bar">
+            <button class="btn" id="simulateBtn">模拟一条报修</button>
+            <button class="btn" id="clearBtn">清除闪烁/关闭弹窗</button>
+        </div>
+
+        <!-- 演示：放置少量机井标记（绝对定位），绿色为正常 -->
+        <!-- 为简洁起见，仅放三个；真实项目可以根据坐标批量渲染 -->
+        <div class="marker green" style="left: 28%; top: 46%;" data-id="ZQ0858"></div>
+        <div class="tooltip" style="left: 28%; top: 46%;">ZQ0858 张桥镇·张桥村</div>
+
+        <div class="marker green" style="left: 48%; top: 33%;" data-id="AB1201"></div>
+        <div class="tooltip" style="left: 48%; top: 33%;">AB1201 徐集镇·前街村</div>
+
+        <div class="marker green" style="left: 63%; top: 62%;" data-id="MN4420"></div>
+        <div class="tooltip" style="left: 63%; top: 62%;">MN4420 汤庄镇·河西村</div>
+    </div>
+
+    <!-- 置顶聊天弹窗 -->
+    <section class="chat-modal" id="chatModal" aria-hidden="true">
+        <header class="chat-header">
+            <div class="chat-title">对话 ID · <span id="dialogId">—</span>｜机井报修互动 · <span id="wellTitle">ZQ0858</span></div>
+            <div class="chat-actions">
+                <button class="icon-btn" id="minBtn" title="最小化">—</button>
+                <button class="icon-btn" id="closeBtn" title="关闭">×</button>
+            </div>
+        </header>
+        <div class="chat-body">
+            <aside class="well-card">
+                <h4>机井信息</h4>
+                <div class="well-meta" id="wellInfo">
+                    <div><b>机井位置：</b>张桥镇、张桥村</div>
+                    <div><b>机井编号：</b>ZQ0858</div>
+                    <div><b>报修时间：</b>2025-10-01 08:56:48</div>
+                    <div><b>报修人电话：</b>18512345678</div>
+                    <div><b>报修故障内容：</b>不通电，水泵不工作</div>
+                    <div><b>巡检员：</b>张三丨18801235678</div>
+                </div>
+            </aside>
+
+            <main class="dialog" id="dialog"></main>
+        </div>
+    </section>
+
+    <div class="hint">提示：点击“模拟一条报修”或直接点地图上的井标进行演示</div>
+
+    <script>
+        const mapEl = document.getElementById('map');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const chatModal = document.getElementById('chatModal');
+        const closeBtn = document.getElementById('closeBtn');
+        const minBtn = document.getElementById('minBtn');
+        const wellTitle = document.getElementById('wellTitle');
+        const dialogIdEl = document.getElementById('dialogId');
+        const wellInfo = document.getElementById('wellInfo');
+        const dialog = document.getElementById('dialog');
+        
+        
+        // 只读模式：不再使用输入框
+
+        /**
+         * demo 数据：以 ZQ0858 为主
+         */
+        const demoWells = {
+            ZQ0858: {
+                id: 'ZQ0858',
+                position: '张桥镇、张桥村',
+                reportTime: '2025-10-01 08:56:48',
+                reporterPhone: '18512345678',
+                issue: '不通电，水泵不工作',
+                inspector: '张三丨18801235678'
+            },
+            AB1201: {
+                id: 'AB1201', position: '徐集镇、前街村', reportTime: '—', reporterPhone: '—', issue: '—', inspector: '—'
+            },
+            MN4420: {
+                id: 'MN4420', position: '汤庄镇、河西村', reportTime: '—', reporterPhone: '—', issue: '—', inspector: '—'
+            }
+        };
+
+        /**
+         * 工具：打开弹窗并填充信息
+         */
+        function openChatForWell(wellId, isAlert = true) {
+            const info = demoWells[wellId] || demoWells['ZQ0858'];
+            wellTitle.textContent = info.id;
+            // 生成对话ID
+            const did = cryptoRandomId();
+            dialogIdEl.textContent = did;
+            wellInfo.innerHTML = `
+                <div><b>机井位置：</b>${info.position}</div>
+                <div><b>机井编号：</b>${info.id}</div>
+                <div><b>报修时间：</b>${info.reportTime}</div>
+                <div><b>报修人电话：</b>${info.reporterPhone}</div>
+                <div><b>报修故障内容：</b><span class="fault-content">${info.issue}</span></div>
+                <div><b>巡检员：</b>${info.inspector}</div>
+            `;
+            // 只读同步：重置并注入预置对话（参考截图2+新截图）
+            dialog.innerHTML = '';
+            appendTimeTag();
+            appendLeft('欢迎来到商丘市机井报修服务平台,请问你要报修的机井在哪个乡镇？');
+            appendRight('冯桥镇曹庄村。');
+            appendLeft('好的，您在冯桥镇曹庄村。请说一说机井出现的问题。');
+            appendRight('嗯，这边没有电了。');
+            appendLeft('好的，您知道机井编号吗？机井编号在井牌上。');
+            appendRight('嗯，编号是0980。');
+            appendLeft('好的，跟您确认一下：机井在冯桥镇曹庄村，问题是这边没有电了，机井编号是0980，对吗？');
+            appendRight('是的，对。');
+            appendLeft('好嘞！您的报修单已生成。维修师傅会尽快联系您，请手机号保持畅通，再见！');
+            
+            // 添加报警动效
+            if (isAlert) {
+                chatModal.classList.add('alert');
+                // 添加一个紧急提示音效（可选）
+                playAlertSound();
+            } else {
+                chatModal.classList.remove('alert');
+            }
+            
+            chatModal.classList.add('visible');
+            chatModal.setAttribute('aria-hidden', 'false');
+        }
+
+        /**
+         * 播放报警提示音（可选功能）
+         */
+        function playAlertSound() {
+            try {
+                // 创建一个简单的提示音
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                // 如果音频播放失败，静默处理
+                console.log('音频播放失败，继续显示视觉提示');
+            }
+        }
+
+        /**
+         * 工具：将某个 marker 置为报修状态（黄+闪烁）
+         */
+        function setMarkerReported(markerEl) {
+            markerEl.classList.remove('green');
+            markerEl.classList.add('yellow', 'blink');
+        }
+
+        /** 发送消息（右侧气泡） */
+        function sendMessage(text) {
+            if (!text.trim()) return;
+            appendRight(text.trim());
+            dialog.scrollTop = dialog.scrollHeight;
+
+            // 简单机器人回复
+            setTimeout(() => {
+                appendLeft('已安排就近巡检员前往，请保持电话畅通。');
+                dialog.scrollTop = dialog.scrollHeight;
+            }, 650);
+        }
+
+        // 工具：时间与消息渲染
+        function appendTimeTag() {
+            const t = document.createElement('div');
+            t.className = 'time';
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mm = String(now.getMinutes()).padStart(2,'0');
+            t.textContent = `今天 ${hh}:${mm}`;
+            dialog.appendChild(t);
+        }
+        function appendLeft(text) {
+            const row = document.createElement('div');
+            row.className = 'msg left';
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar avatar-ai';
+            avatar.textContent = 'AI';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            dialog.appendChild(row);
+        }
+        function appendRight(text) {
+            const row = document.createElement('div');
+            row.className = 'msg right';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar avatar-user';
+            avatar.textContent = '我';
+            row.appendChild(bubble);
+            row.appendChild(avatar);
+            dialog.appendChild(row);
+        }
+        function cryptoRandomId() {
+            try {
+                const a = crypto.getRandomValues(new Uint8Array(8));
+                return Array.from(a).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();
+            } catch(e) {
+                return Math.random().toString(16).slice(2,10).padEnd(16,'0').toUpperCase();
+            }
+        }
+
+        // 点击"模拟一条报修"：默认让 ZQ0858 进入报修并打开弹窗
+        simulateBtn.addEventListener('click', () => {
+            const marker = document.querySelector('.marker[data-id="ZQ0858"]');
+            if (marker) setMarkerReported(marker);
+            openChatForWell('ZQ0858');
+        });
+
+        // 清除状态
+        clearBtn.addEventListener('click', () => {
+            document.querySelectorAll('.marker').forEach(m => m.classList.remove('yellow', 'blink'));
+            document.querySelectorAll('.marker').forEach(m => m.classList.add('green'));
+            chatModal.classList.remove('visible', 'alert');
+            chatModal.setAttribute('aria-hidden', 'true');
+        });
+
+        // 允许点击任意 marker 触发报修演示
+        mapEl.querySelectorAll('.marker').forEach(marker => {
+            marker.addEventListener('click', () => {
+                const wellId = marker.getAttribute('data-id');
+                setMarkerReported(marker);
+                openChatForWell(wellId);
+            });
+        });
+
+        // 弹窗交互
+        closeBtn.addEventListener('click', () => {
+            chatModal.classList.remove('visible', 'alert');
+            chatModal.setAttribute('aria-hidden', 'true');
+        });
+        minBtn.addEventListener('click', () => {
+            if (chatModal.style.transform.includes('translateY(-80%)')) {
+                chatModal.style.transform = 'translate(-50%, -50%)';
+            } else {
+                chatModal.style.transform = 'translate(-50%, -80%)';
+            }
+        });
+
+        // 鼠标悬停交互：暂停/恢复动画
+        chatModal.addEventListener('mouseenter', () => {
+            if (chatModal.classList.contains('alert')) {
+                chatModal.style.animationPlayState = 'paused';
+                // 也暂停伪元素的动画
+                const beforeElement = window.getComputedStyle(chatModal, '::before');
+                chatModal.style.setProperty('--before-animation-play-state', 'paused');
+            }
+        });
+
+        chatModal.addEventListener('mouseleave', () => {
+            if (chatModal.classList.contains('alert')) {
+                chatModal.style.animationPlayState = 'running';
+                // 恢复伪元素的动画
+                chatModal.style.setProperty('--before-animation-play-state', 'running');
+            }
+        });
+
+        // 页面加载完成后自动打开弹窗
+        document.addEventListener('DOMContentLoaded', () => {
+            // 延迟1秒后自动打开弹窗，让页面完全加载
+            setTimeout(() => {
+                openChatForWell('ZQ0858', true); // 默认报警状态，显示闪烁效果
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+
+
