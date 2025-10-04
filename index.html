@@ -249,43 +249,35 @@
         .well-flash-icon {
             position: fixed;
             left: 50%;
-            top: 20px;
-            transform: translateX(-50%);
+            top: 50%;
+            transform: translate(-50%, -50%);
             z-index: 15;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
         }
 
         .flash-well {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: radial-gradient(circle, var(--danger), rgba(255,91,91,.6));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 18px;
             animation: wellFlash 2s infinite ease-in-out;
-            box-shadow: 0 0 20px rgba(255,91,91,.8);
-        }
-
-        .flash-text {
-            color: var(--danger);
-            font-weight: 600;
-            font-size: 14px;
-            text-shadow: 0 0 10px rgba(255,91,91,.8);
+            box-shadow: 0 0 15px rgba(255,91,91,.8);
         }
 
         @keyframes wellFlash {
             0%, 100% { 
                 transform: scale(1);
-                box-shadow: 0 0 20px rgba(255,91,91,.8);
+                box-shadow: 0 0 15px rgba(255,91,91,.8);
             }
             50% { 
-                transform: scale(1.2);
-                box-shadow: 0 0 30px rgba(255,91,91,1);
+                transform: scale(1.5);
+                box-shadow: 0 0 25px rgba(255,91,91,1);
             }
         }
 
@@ -406,7 +398,6 @@
         <!-- 机井闪烁图标 -->
         <div class="well-flash-icon" id="wellFlashIcon" style="display: none;">
             <div class="flash-well">💧</div>
-            <div class="flash-text">机井报警</div>
         </div>
 
         <!-- 右下角通知消息 -->
@@ -753,11 +744,11 @@
             }
         });
 
-        // 页面加载完成后自动打开弹窗
+        // 页面加载完成后自动显示报警通知（第二种交互方式）
         document.addEventListener('DOMContentLoaded', () => {
-            // 延迟1秒后自动打开弹窗，让页面完全加载
+            // 延迟1秒后自动显示报警通知，让页面完全加载
             setTimeout(() => {
-                openChatForWell('ZQ0858', true); // 默认报警状态，显示闪烁效果
+                showNotificationAlert('ZQ0858'); // 默认使用第二种交互方式
             }, 1000);
         });
     </script>
